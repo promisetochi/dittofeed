@@ -175,7 +175,7 @@ const settingsSectionIds = {
   subscription: "settings-subscriptions",
   authentication: "settings-authentication",
   integrations: "settings-integrations",
-}
+};
 
 const menuItems: MenuItemGroup[] = [
   {
@@ -189,7 +189,7 @@ const menuItems: MenuItemGroup[] = [
         type: "item",
         url: `/settings#${settingsSectionIds.dataSources}`,
         icon: SimCardDownload,
-        description: ""
+        description: "",
       },
     ],
   },
@@ -207,35 +207,43 @@ const menuItems: MenuItemGroup[] = [
         description:
           "Configure email settings, including the email provider credentials.",
       },
-    ]
+    ],
   },
   {
     id: "subscription-management",
     title: "Subscription",
     type: "group",
     children: [],
-    url: `/settings#${settingsSectionIds.subscription}`
+    url: `/settings#${settingsSectionIds.subscription}`,
   },
   {
     id: "authentication",
     title: "Authentication",
     type: "group",
     children: [],
-    url: `/settings#${settingsSectionIds.authentication}`
+    url: `/settings#${settingsSectionIds.authentication}`,
   },
   {
     id: "integrations",
     title: "Integrations",
     type: "group",
     children: [],
-    url: `/settings#${settingsSectionIds.integrations}`
+    url: `/settings#${settingsSectionIds.integrations}`,
   },
 ];
 
 function SettingsLayout(
   props: Omit<React.ComponentProps<typeof Layout>, "items">
 ) {
-  return <Layout pageTitle="Settings" backLink={{ href: "/", children: "Back to home" }} navigationRenderer="minimal" items={menuItems} {...props} />;
+  return (
+    <Layout
+      pageTitle="Settings"
+      backLink={{ href: "/", children: "Back to home" }}
+      navigationRenderer="minimal"
+      items={menuItems}
+      {...props}
+    />
+  );
 }
 
 interface SettingsState {
@@ -328,7 +336,7 @@ function useSettingsStorePick(params: (keyof SettingsContent)[]) {
 
 function SegmentIoConfig() {
   const sharedSecret = useSettingsStore((store) => store.segmentIoSharedSecret);
-  const [isEnabled, setIsEnabled] = useState(!!sharedSecret.trim())
+  const [isEnabled, setIsEnabled] = useState(!!sharedSecret.trim());
   const segmentIoRequest = useSettingsStore((store) => store.segmentIoRequest);
   const apiBase = useAppStore((store) => store.apiBase);
   const updateSegmentIoRequest = useSettingsStore(
@@ -399,27 +407,27 @@ function SegmentIoConfig() {
                       switchProps: {
                         value: isEnabled,
                         onChange: (_, checked) => {
-                          setIsEnabled(checked)
+                          setIsEnabled(checked);
                         },
                       },
                     },
                   },
                   ...(isEnabled
                     ? ([
-                      {
-                        id: "shared-secret",
-                        type: "text",
-                        fieldProps: {
-                          label: "Shared Secret",
-                          helperText:
-                            "Secret for signing request body with an HMAC in the “X-Signature” request header",
-                          onChange: (e) => {
-                            updateSegmentIoSharedSecret(e.target.value)
+                        {
+                          id: "shared-secret",
+                          type: "text",
+                          fieldProps: {
+                            label: "Shared Secret",
+                            helperText:
+                              "Secret for signing request body with an HMAC in the “X-Signature” request header",
+                            onChange: (e) => {
+                              updateSegmentIoSharedSecret(e.target.value);
+                            },
+                            value: sharedSecret,
                           },
-                          value: sharedSecret,
                         },
-                      },
-                    ] as FieldComponents[])
+                      ] as FieldComponents[])
                     : []),
                 ],
               },
@@ -434,15 +442,15 @@ function SegmentIoConfig() {
           sx={{
             alignSelf: {
               xs: "start",
-              sm: "end"
-            }
+              sm: "end",
+            },
           }}
         >
           Save
         </Button>
       </Fields>
     </Stack>
-  )
+  );
 }
 
 function SendGridConfig() {
@@ -487,10 +495,11 @@ function SendGridConfig() {
     }
     return null;
   }, [emailProviders, workspace]);
-  const secretName = SENDGRID_WEBHOOK_SECRET_NAME
-  const secretsEditor = useSecretsEditor({ secretName })
+  const webhookKeyEditor = useSecretsEditor({
+    secretName: SENDGRID_WEBHOOK_SECRET_NAME,
+  });
 
-  if (!workspace || !secretsEditor) {
+  if (!workspace || !webhookKeyEditor) {
     return null;
   }
 
@@ -518,14 +527,27 @@ function SendGridConfig() {
     },
   });
 
-  const { showPassword, secretValue, setSecretValue, apiHandler, handleClickShowPassword, handleMouseDownPassword, upsertSecretRequest } = secretsEditor
+  const {
+    showPassword: showWebhookKey,
+    secretValue: webhookKey,
+    setSecretValue: setWebhookKey,
+    secretApiHandler: submitWebhookKey,
+    handleClickShowPassword,
+    handleMouseDownPassword,
+    upsertSecretRequest,
+  } = webhookKeyEditor;
   const requestInProgress =
-    sendgridProviderRequest.type === CompletionStatus.InProgress || upsertSecretRequest.type === CompletionStatus.InProgress;
+    sendgridProviderRequest.type === CompletionStatus.InProgress ||
+    upsertSecretRequest.type === CompletionStatus.InProgress;
 
   const onSubmit = () => {
-    apiHandler()
-    submitApiKey()
-  }
+    if (webhookKey) {
+      submitWebhookKey();
+    }
+    if (apiKey) {
+      submitApiKey();
+    }
+  };
 
   return (
     <Stack>
@@ -546,10 +568,11 @@ function SendGridConfig() {
                     type: "text",
                     fieldProps: {
                       label: "API Key",
+                      type: showWebhookKey ? "text" : "password",
                       helperText:
                         "API key, used internally by Dittofeed to send emails via sendgrid.",
                       onChange: (e) => {
-                        updateSendgridProviderApiKey(e.target.value)
+                        updateSendgridProviderApiKey(e.target.value);
                       },
                       value: apiKey,
                     },
@@ -561,13 +584,12 @@ function SendGridConfig() {
                       label: "Webhook Key",
                       helperText:
                         "Sendgrid webhook verification key, used to authenticate sendgrid webhook requests.",
-                      // label: secretName,
                       variant: "outlined",
-                      type: showPassword ? "text" : "password",
-                      placeholder: showPassword ? undefined : "**********",
-                      onChange: (e) => setSecretValue(e.target.value),
+                      type: showWebhookKey ? "text" : "password",
+                      placeholder: showWebhookKey ? undefined : "**********",
+                      onChange: (e) => setWebhookKey(e.target.value),
                       sx: { flex: 1 },
-                      value: secretValue,
+                      value: webhookKey,
                       InputProps: {
                         endAdornment: (
                           <InputAdornment position="end">
@@ -576,7 +598,7 @@ function SendGridConfig() {
                               onClick={handleClickShowPassword}
                               onMouseDown={handleMouseDownPassword}
                             >
-                              {showPassword ? (
+                              {showWebhookKey ? (
                                 <Visibility />
                               ) : (
                                 <VisibilityOff />
@@ -600,15 +622,15 @@ function SendGridConfig() {
           sx={{
             alignSelf: {
               xs: "start",
-              sm: "end"
-            }
+              sm: "end",
+            },
           }}
         >
           Save
         </Button>
       </Fields>
     </Stack>
-  )
+  );
 }
 
 function WriteKeySettings() {
@@ -641,40 +663,48 @@ function WriteKeySettings() {
 
   return (
     <Stack>
-      <Fields id={settingsSectionIds.authentication} title="Authentication" description="" sections={[
-        {
-          id: "authorization-section-1",
-          fieldGroups: [
-            {
-              id: "sendgrid-fields",
-              name: "Write key",
-              fields: [
-                {
-                  id: "sendgrid-api-key",
-                  type: "text",
-                  fieldProps: {
-                    label: "",
-                    helperText: "Include this key as an HTTP \"Authorization: Basic ...\" header in your requests. This authorization key can be included in your client, and does not need to be kept secret.",
-                    value: keyHeader, // "Basic Y2M4MzBjOTItYTI5Mi00NjczLWI0ODUtY2E2YzNiNTkzOGNmOjQzN2ViMjFiNDQzZTQxNDY=",
-                    children: "abcd",
-                    onChange: () => { },
-                    InputProps: {
-                      endAdornment: <InputAdornment position="end">
-                        <IconButton
-                          color="primary"
-                          onClick={() => copyToClipboard(keyHeader)}
-                        >
-                          <ContentCopyOutlined />
-                        </IconButton>
-                      </InputAdornment>
+      <Fields
+        id={settingsSectionIds.authentication}
+        title="Authentication"
+        description=""
+        sections={[
+          {
+            id: "authorization-section-1",
+            fieldGroups: [
+              {
+                id: "sendgrid-fields",
+                name: "Write key",
+                fields: [
+                  {
+                    id: "sendgrid-api-key",
+                    type: "text",
+                    fieldProps: {
+                      label: "",
+                      helperText:
+                        'Include this key as an HTTP "Authorization: Basic ..." header in your requests. This authorization key can be included in your client, and does not need to be kept secret.',
+                      value: keyHeader, // "Basic Y2M4MzBjOTItYTI5Mi00NjczLWI0ODUtY2E2YzNiNTkzOGNmOjQzN2ViMjFiNDQzZTQxNDY=",
+                      children: "abcd",
+                      onChange: () => {},
+                      InputProps: {
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              color="primary"
+                              onClick={() => copyToClipboard(keyHeader)}
+                            >
+                              <ContentCopyOutlined />
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      },
                     },
-                  }
-                },
-              ]
-            }
-          ]
-        }
-      ]} />
+                  },
+                ],
+              },
+            ],
+          },
+        ]}
+      />
     </Stack>
   );
 }
@@ -850,8 +880,8 @@ function HubspotIntegration() {
         sx={{
           alignSelf: {
             xs: "start",
-            sm: "end"
-          }
+            sm: "end",
+          },
         }}
         href={`https://app.hubspot.com/oauth/authorize?client_id=9128468e-b771-4bab-b301-21b479213975&redirect_uri=${dashboardUrl}/dashboard/oauth2/callback/hubspot&scope=timeline%20sales-email-read%20crm.objects.contacts.read%20crm.objects.contacts.write%20crm.objects.companies.write%20crm.objects.companies.read%20crm.objects.owners.read%20crm.lists.write%20crm.lists.read`}
       >
@@ -860,31 +890,30 @@ function HubspotIntegration() {
     );
   }
 
-  return (
-    <>
-      {hubspotContents}
-    </>
-  );
+  return <>{hubspotContents}</>;
 }
 
 function IntegrationSettings() {
   return (
     <Stack>
-      <Fields id={settingsSectionIds.integrations} title="Integrations" description="" sections={[
-        {
-          id: "integration-section-1",
-          fieldGroups: [
-            {
-              id: "sendgrid-fields",
-              name: "Hubspot",
-              fields: [
-              ],
-              children: <HubspotIntegration />
-            }
-          ]
-        }
-      ]} />
-
+      <Fields
+        id={settingsSectionIds.integrations}
+        title="Integrations"
+        description=""
+        sections={[
+          {
+            id: "integration-section-1",
+            fieldGroups: [
+              {
+                id: "sendgrid-fields",
+                name: "Hubspot",
+                fields: [],
+                children: <HubspotIntegration />,
+              },
+            ],
+          },
+        ]}
+      />
     </Stack>
   );
 }
@@ -894,7 +923,7 @@ function SubscriptionManagementSettings() {
   const [fromSubscriptionChange, setFromSubscriptionChange] =
     useState<boolean>(true);
   const [fromSubscribe, setFromSubscribe] = useState<boolean>(false);
-  const [showPreview, setShowPreview] = useState<boolean>(false)
+  const [showPreview, setShowPreview] = useState<boolean>(false);
 
   const workspaceResult = useAppStore((store) => store.workspace);
   const workspace =
@@ -905,10 +934,10 @@ function SubscriptionManagementSettings() {
   const subscriptions =
     subscriptionGroups.type === CompletionStatus.Successful
       ? subscriptionGroups.value.map((sg, i) => ({
-        name: sg.name,
-        id: sg.id,
-        isSubscribed: !(i === 0 && fromSubscriptionChange && !fromSubscribe),
-      }))
+          name: sg.name,
+          id: sg.id,
+          isSubscribed: !(i === 0 && fromSubscriptionChange && !fromSubscribe),
+        }))
       : [];
 
   if (!workspace) {
@@ -932,7 +961,9 @@ function SubscriptionManagementSettings() {
                 control={
                   <Checkbox
                     checked={fromSubscriptionChange}
-                    onChange={(e) => setFromSubscriptionChange(e.target.checked)}
+                    onChange={(e) =>
+                      setFromSubscriptionChange(e.target.checked)
+                    }
                   />
                 }
                 label="User clicked subscription change link."
@@ -961,7 +992,7 @@ function SubscriptionManagementSettings() {
               key={`${fromSubscribe}-${fromSubscriptionChange}`}
               subscriptions={subscriptions}
               workspaceName={workspace.name}
-              onSubscriptionUpdate={async () => { }}
+              onSubscriptionUpdate={async () => {}}
               subscriptionChange={
                 fromSubscribe
                   ? SubscriptionChange.Subscribe
@@ -976,26 +1007,35 @@ function SubscriptionManagementSettings() {
           </Paper>
         </Stack>
       </Dialog>
-      <Fields id={settingsSectionIds.subscription} title="Subscription" description="" sections={[
-        {
-          id: "subscription-section-1",
-          fieldGroups: [
-            {
-              id: "subscription-preview",
-              name: "User subscription page",
-              fields: [{
-                id: "subscription-preview-button",
-                type: "button",
-                fieldProps: {
-                  children: "Preview",
-                  onClick: () => { setShowPreview(true) },
-                  variant: "outlined"
-                }
-              }]
-            }
-          ]
-        }
-      ]} />
+      <Fields
+        id={settingsSectionIds.subscription}
+        title="Subscription"
+        description=""
+        sections={[
+          {
+            id: "subscription-section-1",
+            fieldGroups: [
+              {
+                id: "subscription-preview",
+                name: "User subscription page",
+                fields: [
+                  {
+                    id: "subscription-preview-button",
+                    type: "button",
+                    fieldProps: {
+                      children: "Preview",
+                      onClick: () => {
+                        setShowPreview(true);
+                      },
+                      variant: "outlined",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ]}
+      />
     </Stack>
   );
 }
@@ -1003,10 +1043,18 @@ function SubscriptionManagementSettings() {
 const Settings: NextPage<
   InferGetServerSidePropsType<typeof getServerSideProps>
 > = function Settings() {
-
   return (
     <SettingsLayout>
-      <Stack spacing={8} sx={{ padding: 2, paddingY: 8, maxWidth: "lg", marginX: "auto", width: "100%" }}>
+      <Stack
+        spacing={8}
+        sx={{
+          padding: 2,
+          paddingY: 8,
+          maxWidth: "lg",
+          marginX: "auto",
+          width: "100%",
+        }}
+      >
         <SegmentIoConfig />
         <SendGridConfig />
         <WriteKeySettings />
@@ -1014,8 +1062,6 @@ const Settings: NextPage<
         <IntegrationSettings />
       </Stack>
     </SettingsLayout>
-
-
   );
 };
 export default Settings;
